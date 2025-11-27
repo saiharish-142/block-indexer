@@ -3,7 +3,7 @@ package grpcserver
 import (
 	"net"
 
-	"github.com/example/block-indexer/internal/pb"
+	"github.com/example/block-indexer/core/pb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )

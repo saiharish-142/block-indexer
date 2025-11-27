@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/example/block-indexer/internal/config"
-	"github.com/example/block-indexer/internal/metrics"
-	"github.com/example/block-indexer/internal/pb"
+	"github.com/example/block-indexer/core/config"
+	"github.com/example/block-indexer/core/metrics"
+	"github.com/example/block-indexer/core/pb"
 	"go.uber.org/zap"
 )
 
@@ -57,10 +57,10 @@ func (i *Indexer) processNextBatch(ctx context.Context) error {
 	// TODO: connect to RPC, fetch latest head, backfill gaps, apply confirmations.
 	start := time.Now()
 	_ = pb.BlockSummary{
-		Number:    0,
-		Hash:      "0x0",
+		Number:     0,
+		Hash:       "0x0",
 		ParentHash: "0x0",
-		Timestamp: time.Now().Unix(),
+		Timestamp:  time.Now().Unix(),
 	}
 	metrics.BlocksProcessed.Add(1)
 	i.logger.Info("processed batch", zap.Duration("took", time.Since(start)))

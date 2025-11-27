@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/example/block-indexer/internal/config"
-	"github.com/example/block-indexer/internal/metrics"
-	"github.com/example/block-indexer/internal/pb"
+	"github.com/example/block-indexer/core/config"
+	"github.com/example/block-indexer/core/metrics"
+	"github.com/example/block-indexer/core/pb"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"

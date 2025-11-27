@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	"github.com/example/block-indexer/internal/config"
-	"github.com/example/block-indexer/internal/metrics"
-	"github.com/example/block-indexer/internal/pb"
+	"github.com/example/block-indexer/core/config"
+	"github.com/example/block-indexer/core/metrics"
+	"github.com/example/block-indexer/core/pb"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -57,10 +57,10 @@ func (s *Server) handleHeads(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-ticker.C:
 			msg := pb.BlockSummary{
-				Number:    uint64(time.Now().Unix()),
-				Hash:      "0xhead",
+				Number:     uint64(time.Now().Unix()),
+				Hash:       "0xhead",
 				ParentHash: "0xparent",
-				Timestamp: time.Now().Unix(),
+				Timestamp:  time.Now().Unix(),
 			}
 			if err := writeJSON(ctx, conn, msg); err != nil {
 				s.logger.Error("write ws", zap.Error(err))

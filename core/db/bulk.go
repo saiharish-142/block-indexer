@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 
-	"github.com/example/block-indexer/internal/pb"
+	"github.com/example/block-indexer/core/pb"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

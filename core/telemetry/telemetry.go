@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/example/block-indexer/internal/config"
+	"github.com/example/block-indexer/core/config"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"

@@ -6,11 +6,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/example/block-indexer/internal/config"
-	"github.com/example/block-indexer/internal/indexer"
-	"github.com/example/block-indexer/internal/logging"
-	"github.com/example/block-indexer/internal/metrics"
-	"github.com/example/block-indexer/internal/telemetry"
+	"github.com/example/block-indexer/core/config"
+	"github.com/example/block-indexer/core/indexer"
+	"github.com/example/block-indexer/core/logging"
+	"github.com/example/block-indexer/core/metrics"
+	"github.com/example/block-indexer/core/telemetry"
 	"go.uber.org/zap"
 )
 

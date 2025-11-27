@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/example/block-indexer/internal/config"
+	"github.com/example/block-indexer/core/config"
 	"github.com/redis/go-redis/v9"
 )
 

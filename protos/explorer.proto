@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package explorer.v1;
 
-option go_package = "github.com/example/block-indexer/internal/pb";
+option go_package = "github.com/example/block-indexer/core/pb";
 
 message BlockSummary {
   uint64 number = 1;

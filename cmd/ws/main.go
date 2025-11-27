@@ -8,11 +8,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/example/block-indexer/internal/config"
-	"github.com/example/block-indexer/internal/logging"
-	"github.com/example/block-indexer/internal/metrics"
-	"github.com/example/block-indexer/internal/telemetry"
-	"github.com/example/block-indexer/internal/ws"
+	"github.com/example/block-indexer/core/config"
+	"github.com/example/block-indexer/core/logging"
+	"github.com/example/block-indexer/core/metrics"
+	"github.com/example/block-indexer/core/telemetry"
+	"github.com/example/block-indexer/core/ws"
 	"go.uber.org/zap"
 )
 
