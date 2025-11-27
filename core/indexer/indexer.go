@@ -3,11 +3,11 @@ package indexer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/example/block-indexer/core/config"
 	"github.com/example/block-indexer/core/metrics"
-	"github.com/example/block-indexer/core/pb"
 	"go.uber.org/zap"
 )
 
@@ -16,6 +16,8 @@ type Indexer struct {
 	logger *zap.Logger
 	cfg    config.Config
 	stopCh chan struct{}
+	evmNext uint64
+	dagNext uint64
 }
 
 // New constructs an Indexer.
@@ -24,6 +26,8 @@ func New(logger *zap.Logger, cfg config.Config) *Indexer {
 		logger: logger,
 		cfg:    cfg,
 		stopCh: make(chan struct{}),
+		evmNext: cfg.EVMStartBlock,
+		dagNext: cfg.DagStartOrder,
 	}
 }
 
@@ -31,6 +35,8 @@ func New(logger *zap.Logger, cfg config.Config) *Indexer {
 func (i *Indexer) Run(ctx context.Context) error {
 	ticker := time.NewTicker(i.cfg.PollInterval)
 	defer ticker.Stop()
+
+	go i.streamEthHeads(ctx)
 
 	i.logger.Info("indexer started", zap.Duration("poll_interval", i.cfg.PollInterval))
 
@@ -54,15 +60,28 @@ func (i *Indexer) Stop() {
 }
 
 func (i *Indexer) processNextBatch(ctx context.Context) error {
-	// TODO: connect to RPC, fetch latest head, backfill gaps, apply confirmations.
+	// TODO: connect to RPC, backfill gaps, apply confirmations.
 	start := time.Now()
-	_ = pb.BlockSummary{
-		Number:     0,
-		Hash:       "0x0",
-		ParentHash: "0x0",
-		Timestamp:  time.Now().Unix(),
+
+	block, err := i.fetchEthBlockByNumber(ctx, i.evmNext)
+	if err != nil {
+		return fmt.Errorf("fetch eth block: %w", err)
 	}
+
+	dagBlock, err := i.fetchDagBlockByOrder(ctx, i.dagNext, true, true, false)
+	if err != nil {
+		return fmt.Errorf("fetch dag block: %w", err)
+	}
+
 	metrics.BlocksProcessed.Add(1)
-	i.logger.Info("processed batch", zap.Duration("took", time.Since(start)))
+	i.logger.Info("processed batch",
+		zap.Uint64("block", block.Number),
+		zap.String("hash", block.Hash),
+		zap.Uint64("dag_order", dagBlock.Number),
+		zap.String("dag_hash", dagBlock.Hash),
+		zap.Duration("took", time.Since(start)),
+	)
+	i.evmNext++
+	i.dagNext++
 	return nil
 }
