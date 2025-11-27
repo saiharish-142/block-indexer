@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: explorer-indexer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: explorer-indexer
+  template:
+    metadata:
+      labels:
+        app: explorer-indexer
+    spec:
+      containers:
+        - name: indexer
+          image: ghcr.io/example/block-indexer-indexer:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9100
+            - containerPort: 9101
+          envFrom:
+            - configMapRef:
+                name: block-indexer-config
+            - secretRef:
+                name: block-indexer-secrets
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 9101
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9101
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: explorer-indexer
+spec:
+  selector:
+    app: explorer-indexer
+  ports:
+    - name: grpc
+      port: 9100
+      targetPort: 9100
+    - name: metrics
+      port: 9101
+      targetPort: 9101
+  type: ClusterIP

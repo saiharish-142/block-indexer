@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: explorer-ws
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: explorer-ws
+  template:
+    metadata:
+      labels:
+        app: explorer-ws
+    spec:
+      containers:
+        - name: ws
+          image: ghcr.io/example/block-indexer-ws:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8090
+            - containerPort: 9101
+          envFrom:
+            - configMapRef:
+                name: block-indexer-config
+            - secretRef:
+                name: block-indexer-secrets
+          livenessProbe:
+            httpGet:
+              path: /ws/heads
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ws/heads
+              port: 8090
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: explorer-ws
+spec:
+  selector:
+    app: explorer-ws
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8090
+    - name: metrics
+      port: 9101
+      targetPort: 9101
+  type: ClusterIP

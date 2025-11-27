@@ -1,0 +1,6 @@
+apiVersion: v2
+name: block-indexer
+description: Helm chart skeleton for block explorer backend
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

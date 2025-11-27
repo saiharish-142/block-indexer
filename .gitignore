@@ -1,0 +1,28 @@
+# Binaries built by `go build` / `go test`
+/api
+/indexer
+/ws
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Build / coverage artifacts
+/bin/
+/build/
+/dist/
+/tmp/
+/coverage/
+*.coverprofile
+*.cov
+*.prof
+*.log
+
+# Editor / OS files
+.idea/
+.vscode/
+*.swp
+.DS_Store

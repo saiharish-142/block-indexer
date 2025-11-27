@@ -1,0 +1,50 @@
+image:
+  repository: ghcr.io/example/block-indexer
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+replicaCount:
+  api: 2
+  ws: 2
+  indexer: 1
+
+resources:
+  api:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1
+      memory: 512Mi
+  ws:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1
+      memory: 512Mi
+  indexer:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2
+      memory: 1Gi
+
+service:
+  type: ClusterIP
+  apiPort: 80
+  wsPort: 80
+  grpcPort: 9100
+  metricsPort: 9101
+
+env:
+  APP_ENV: production
+  API_ADDR: ":8080"
+  WS_ADDR: ":8090"
+  GRPC_ADDR: ":9100"
+  METRICS_ADDR: ":9101"
+  CHAIN_RPC_URL: "wss://rpc.example"
+  CONFIRM_DEPTH: "12"
+  POLL_INTERVAL: "2s"
+  BATCH_SIZE: "200"

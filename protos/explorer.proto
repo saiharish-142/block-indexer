@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package explorer.v1;
+
+option go_package = "github.com/example/block-indexer/internal/pb";
+
+message BlockSummary {
+  uint64 number = 1;
+  string hash = 2;
+  string parent_hash = 3;
+  int64 timestamp = 4;
+}
+
+message TxSummary {
+  string hash = 1;
+  string from = 2;
+  string to = 3;
+  string value = 4;
+  uint64 block_number = 5;
+  string status = 6;
+}
+
+message AddressActivity {
+  string address = 1;
+  TxSummary tx = 2;
+}
+
+message Empty {}
+
+message BlockRequest {
+  string hash = 1;
+  uint64 number = 2;
+}
+
+message TxRequest {
+  string hash = 1;
+}
+
+message AddressRequest {
+  string address = 1;
+}
+
+service QueryService {
+  rpc GetBlock(BlockRequest) returns (BlockSummary);
+  rpc GetTransaction(TxRequest) returns (TxSummary);
+}
+
+service StreamService {
+  rpc StreamHeads(Empty) returns (stream BlockSummary);
+  rpc StreamAddress(AddressRequest) returns (stream AddressActivity);
+}
