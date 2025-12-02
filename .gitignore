@@ -26,3 +26,4 @@
 .vscode/
 *.swp
 .DS_Store
+*.sh
