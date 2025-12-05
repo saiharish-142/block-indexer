@@ -9,6 +9,22 @@ message BlockSummary {
   string hash = 2;
   string parent_hash = 3;
   int64 timestamp = 4;
+  uint64 gas_used = 5;
+  uint64 gas_limit = 6;
+  string miner = 7;
+  string nonce = 8;
+  string difficulty = 9;
+  string extra_data = 10;
+  string logs_bloom = 11;
+  string mix_hash = 12;
+  string receipts_root = 13;
+  string sha3_uncles = 14;
+  uint64 size_bytes = 15;
+  string state_root = 16;
+  string tx_root = 17;
+  int32 tx_count = 18;
+  repeated string uncles = 19;
+  repeated string tx_hashes = 20;
 }
 
 message TxSummary {

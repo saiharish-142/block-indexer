@@ -63,17 +63,64 @@ func (i *Indexer) fetchEthBlockByNumber(ctx context.Context, number uint64) (*pb
 		return nil, fmt.Errorf("parse block timestamp: %w", err)
 	}
 
+	gasUsed := parseHexUint64Default(rpcResp.Result.GasUsed)
+	gasLimit := parseHexUint64Default(rpcResp.Result.GasLimit)
+	sizeBytes := parseHexUint64Default(rpcResp.Result.Size)
+	txHashes := extractTxHashes(rpcResp.Result.Transactions)
+
 	return &pb.BlockSummary{
-		Number:     num,
-		Hash:       rpcResp.Result.Hash,
-		ParentHash: rpcResp.Result.ParentHash,
-		Timestamp:  int64(ts),
+		Number:       num,
+		Hash:         rpcResp.Result.Hash,
+		Miner:        rpcResp.Result.Miner,
+		ParentHash:   rpcResp.Result.ParentHash,
+		Timestamp:    int64(ts),
+		GasUsed:      gasUsed,
+		GasLimit:     gasLimit,
+		Nonce:        rpcResp.Result.Nonce,
+		Difficulty:   rpcResp.Result.Difficulty,
+		ExtraData:    rpcResp.Result.ExtraData,
+		LogsBloom:    rpcResp.Result.LogsBloom,
+		MixHash:      rpcResp.Result.MixHash,
+		ReceiptsRoot: rpcResp.Result.ReceiptsRoot,
+		Sha3Uncles:   rpcResp.Result.Sha3Uncles,
+		SizeBytes:    sizeBytes,
+		StateRoot:    rpcResp.Result.StateRoot,
+		TxRoot:       rpcResp.Result.TransactionsRoot,
+		TxCount:      len(txHashes),
+		Uncles:       rpcResp.Result.Uncles,
+		TxHashes:     txHashes,
 	}, nil
 }
 
 func parseHexUint64(hexStr string) (uint64, error) {
 	trimmed := strings.TrimPrefix(hexStr, "0x")
 	return strconv.ParseUint(trimmed, 16, 64)
+}
+
+func parseHexUint64Default(hexStr string) uint64 {
+	val, err := parseHexUint64(hexStr)
+	if err != nil {
+		return 0
+	}
+	return val
+}
+
+func extractTxHashes(txField []any) []string {
+	if len(txField) == 0 {
+		return nil
+	}
+	hashes := make([]string, 0, len(txField))
+	for _, tx := range txField {
+		switch v := tx.(type) {
+		case string:
+			hashes = append(hashes, v)
+		case map[string]any:
+			if h, ok := v["hash"].(string); ok {
+				hashes = append(hashes, h)
+			}
+		}
+	}
+	return hashes
 }
 
 type ethRPCRequest struct {
@@ -91,10 +138,25 @@ type ethRPCResponse struct {
 }
 
 type ethRPCBlock struct {
-	Number     string `json:"number"`
-	Hash       string `json:"hash"`
-	ParentHash string `json:"parentHash"`
-	Timestamp  string `json:"timestamp"`
+	Number           string   `json:"number"`
+	Hash             string   `json:"hash"`
+	Miner            string   `json:"miner"`
+	ParentHash       string   `json:"parentHash"`
+	Timestamp        string   `json:"timestamp"`
+	Difficulty       string   `json:"difficulty"`
+	ExtraData        string   `json:"extraData"`
+	GasLimit         string   `json:"gasLimit"`
+	GasUsed          string   `json:"gasUsed"`
+	LogsBloom        string   `json:"logsBloom"`
+	MixHash          string   `json:"mixHash"`
+	Nonce            string   `json:"nonce"`
+	ReceiptsRoot     string   `json:"receiptsRoot"`
+	Sha3Uncles       string   `json:"sha3Uncles"`
+	Size             string   `json:"size"`
+	StateRoot        string   `json:"stateRoot"`
+	TransactionsRoot string   `json:"transactionsRoot"`
+	Uncles           []string `json:"uncles"`
+	Transactions     []any    `json:"transactions"`
 }
 
 type ethRPCError struct {

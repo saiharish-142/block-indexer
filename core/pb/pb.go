@@ -8,10 +8,26 @@ import (
 )
 
 type BlockSummary struct {
-	Number     uint64 `json:"number"`
-	Hash       string `json:"hash"`
-	ParentHash string `json:"parent_hash"`
-	Timestamp  int64  `json:"timestamp"`
+	Number       uint64   `json:"number"`
+	Hash         string   `json:"hash"`
+	Miner        string   `json:"miner"`
+	ParentHash   string   `json:"parent_hash"`
+	Timestamp    int64    `json:"timestamp"`
+	GasUsed      uint64   `json:"gas_used,omitempty"`
+	GasLimit     uint64   `json:"gas_limit,omitempty"`
+	Nonce        string   `json:"nonce,omitempty"`
+	Difficulty   string   `json:"difficulty,omitempty"`
+	ExtraData    string   `json:"extra_data,omitempty"`
+	LogsBloom    string   `json:"logs_bloom,omitempty"`
+	MixHash      string   `json:"mix_hash,omitempty"`
+	ReceiptsRoot string   `json:"receipts_root,omitempty"`
+	Sha3Uncles   string   `json:"sha3_uncles,omitempty"`
+	SizeBytes    uint64   `json:"size_bytes,omitempty"`
+	StateRoot    string   `json:"state_root,omitempty"`
+	TxRoot       string   `json:"tx_root,omitempty"`
+	TxCount      int      `json:"tx_count,omitempty"`
+	Uncles       []string `json:"uncles,omitempty"`
+	TxHashes     []string `json:"tx_hashes,omitempty"`
 }
 
 type TxSummary struct {
@@ -67,5 +83,5 @@ type StreamService_StreamAddressServer interface {
 }
 
 // Register functions keep gRPC wiring consistent even as placeholders.
-func RegisterQueryServiceServer(s grpc.ServiceRegistrar, srv QueryServiceServer) {}
+func RegisterQueryServiceServer(s grpc.ServiceRegistrar, srv QueryServiceServer)   {}
 func RegisterStreamServiceServer(s grpc.ServiceRegistrar, srv StreamServiceServer) {}

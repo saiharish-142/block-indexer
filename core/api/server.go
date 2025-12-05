@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/example/block-indexer/core/config"
+	"github.com/example/block-indexer/core/db"
 	"github.com/example/block-indexer/core/metrics"
 	"github.com/example/block-indexer/core/pb"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/zap"
 )
@@ -22,15 +24,18 @@ import (
 type Server struct {
 	cfg    config.Config
 	logger *zap.Logger
+	pool   *pgxpool.Pool
 	router chi.Router
-	// TODO: inject db pools/cache clients here.
 }
 
+type blockFetcher func(context.Context, *pgxpool.Pool, int, *uint64) ([]pb.BlockSummary, error)
+
 // NewServer wires the router with middleware and endpoints.
-func NewServer(cfg config.Config, logger *zap.Logger) http.Handler {
+func NewServer(cfg config.Config, logger *zap.Logger, pool *pgxpool.Pool) http.Handler {
 	s := &Server{
 		cfg:    cfg,
 		logger: logger,
+		pool:   pool,
 	}
 
 	r := chi.NewRouter()
@@ -44,34 +49,68 @@ func NewServer(cfg config.Config, logger *zap.Logger) http.Handler {
 	r.Use(recordLatency)
 	r.Use(otelhttp.NewMiddleware("api"))
 
+	blockLimiter := httprate.LimitByIP(60, time.Minute)
+
 	r.Route("/v1", func(r chi.Router) {
-		r.Get("/blocks", s.handleListBlocks)
-		r.Get("/blocks/{id}", s.handleGetBlock)
+		r.With(blockLimiter).Get("/evm/blocks", s.handleListEVMBlocks)
+		r.With(blockLimiter).Get("/dag/blocks", s.handleListDagBlocks)
+		r.With(blockLimiter).Get("/blocks", s.handleListDagBlocks)
+		r.With(blockLimiter).Get("/blocks/{id}", s.handleGetBlock)
 		r.Get("/txs/{hash}", s.handleGetTx)
 		r.Get("/addresses/{address}", s.handleGetAddress)
 		r.Get("/addresses/{address}/txs", s.handleListAddressTxs)
+		r.Get("/stats/blocks", s.handleBlockCounts)
 	})
 
 	s.router = r
 	return r
 }
 
-func (s *Server) handleListBlocks(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	cursor := r.URL.Query().Get("cursor")
-	// limit := parseLimit(r.URL.Query().Get("limit"), 50)
+func (s *Server) handleListEVMBlocks(w http.ResponseWriter, r *http.Request) {
+	s.handleListBlocks(w, r, db.ListEVMBlocks, "evm")
+}
 
-	// Placeholder: this would query Postgres or Redis cache.
-	resp := struct {
-		Cursor string            `json:"cursor"`
-		Items  []pb.BlockSummary `json:"items"`
-	}{
-		Cursor: cursor,
-		Items: []pb.BlockSummary{
-			{Number: 1, Hash: uuid.NewString(), ParentHash: "0x0", Timestamp: time.Now().Unix()},
-		},
+func (s *Server) handleListDagBlocks(w http.ResponseWriter, r *http.Request) {
+	s.handleListBlocks(w, r, db.ListDagBlocks, "dag")
+}
+
+func (s *Server) handleListBlocks(w http.ResponseWriter, r *http.Request, fetch blockFetcher, chain string) {
+	ctx := r.Context()
+	if s.pool == nil {
+		http.Error(w, "db not configured", http.StatusServiceUnavailable)
+		return
 	}
-	writeJSON(ctx, w, http.StatusOK, resp)
+
+	limit := parseLimit(r.URL.Query().Get("limit"), 50)
+	cursorParam := r.URL.Query().Get("cursor")
+
+	var before *uint64
+	if cursorParam != "" {
+		num, err := strconv.ParseUint(cursorParam, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid cursor", http.StatusBadRequest)
+			return
+		}
+		before = &num
+	}
+
+	blocks, err := fetch(ctx, s.pool, limit, before)
+	if err != nil {
+		s.logger.Error("list blocks failed", zap.String("chain", chain), zap.Error(err))
+		http.Error(w, "failed to fetch blocks", http.StatusInternalServerError)
+		return
+	}
+
+	nextCursor := ""
+	if len(blocks) > limit {
+		nextCursor = strconv.FormatUint(blocks[limit-1].Number, 10)
+		blocks = blocks[:limit]
+	}
+
+	writeJSON(ctx, w, http.StatusOK, map[string]any{
+		"cursor": nextCursor,
+		"items":  blocks,
+	})
 }
 
 func (s *Server) handleGetBlock(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +148,33 @@ func (s *Server) handleListAddressTxs(w http.ResponseWriter, r *http.Request) {
 		{Hash: uuid.NewString(), From: address, To: "0xdef", BlockNumber: 1, Status: "success"},
 	}
 	writeJSON(ctx, w, http.StatusOK, resp)
+}
+
+func (s *Server) handleBlockCounts(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if s.pool == nil {
+		http.Error(w, "db not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	evmCount, err := db.CountBlocks(ctx, s.pool)
+	if err != nil {
+		s.logger.Error("count evm blocks failed", zap.Error(err))
+		http.Error(w, "failed to count blocks", http.StatusInternalServerError)
+		return
+	}
+
+	dagCount, err := db.CountDagBlocks(ctx, s.pool)
+	if err != nil {
+		s.logger.Error("count dag blocks failed", zap.Error(err))
+		http.Error(w, "failed to count dag blocks", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(ctx, w, http.StatusOK, map[string]any{
+		"evm_blocks": evmCount,
+		"dag_blocks": dagCount,
+	})
 }
 
 func writeJSON(ctx context.Context, w http.ResponseWriter, status int, v interface{}) {
