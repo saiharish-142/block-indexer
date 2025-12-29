@@ -1,0 +1,13 @@
+go 1.22
+
+use (
+	./pkg
+	./services/api-gateway
+	./services/contract-service
+	./services/dag-indexer
+	./services/evm-indexer
+	./services/search-service
+	./services/stats-service
+	./services/trace-service
+	./services/ws-service
+)

@@ -1,0 +1,3 @@
+extends: common
+serviceName: ws-service
+httpPort: 8090

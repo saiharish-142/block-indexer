@@ -1,0 +1,5 @@
+extends: common
+serviceName: stats-service
+httpPort: 9003
+aggregation:
+  intervalSeconds: 60

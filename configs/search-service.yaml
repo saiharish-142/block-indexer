@@ -1,0 +1,3 @@
+extends: common
+serviceName: search-service
+httpPort: 9005

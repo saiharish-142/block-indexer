@@ -1,0 +1,22 @@
+serviceName: explorer-backend
+httpPort: 8080
+logLevel: info
+
+db:
+  host: postgres
+  port: 5432
+  user: explorer
+  password: explorer_pass
+  name: explorer_db
+  sslMode: disable
+  maxConns: 32
+  minConns: 4
+
+redis:
+  addr: redis:6379
+  db: 0
+  password: ""
+
+nats:
+  url: nats://nats:4222
+  subjectPrefix: explorer

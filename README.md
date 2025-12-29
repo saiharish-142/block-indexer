@@ -1,72 +1,61 @@
-# Block Explorer Backend (Go)
+# Block Indexer (Go, workspace)
 
-Production-oriented scaffold for a high-speed EVM-like chain (≈10 blocks/sec) built as Go microservices: indexer, public API, and WebSocket fanout. Includes gRPC contracts, Postgres/Redis data layer, Docker/K8s/Helm deployment, and observability hooks.
+Small Go services for indexing an EVM-like chain (plus a DAG overlay), exposing HTTP and WebSocket APIs. Everything is wired as Go modules in `go.work`, backed by Postgres and NATS, with Prometheus metrics on each service.
 
-## Layout
-- `cmd/indexer`: chain ingestion service (WS heads + polling backfill, bulk inserts).
-- `cmd/api`: REST API (chi) with pagination stubs.
-- `cmd/ws`: WebSocket service for heads/tx/address topics.
-- `internal/*`: shared config, logging, metrics, telemetry, db/cache helpers, gRPC server glue.
-- `protos/explorer.proto`: gRPC definitions (replace `internal/pb` placeholder with generated code).
-- `migrations/`: Postgres schema with partitioned tables.
-- `deploy/docker/`: Multi-stage Dockerfiles per service.
-- `deploy/k8s/`: Minimal manifests for Deployments/Services/ConfigMap/Secret.
-- `deploy/helm/`: Helm chart skeleton.
-- `deploy/observability/`: Grafana dashboard stub.
-- `docs/`: Cache strategy and data layer notes.
+## Repository layout
+- `services/` – individual services (see below) built with chi/zap/pgx.
+- `pkg/` – shared helpers: config loader (Viper), Postgres pool + goose migrations, Zap logger, RPC stubs for EVM/DAG, Prometheus handler, NATS helper, and typed models.
+- `configs/` – YAML config used by every service (`common.yaml` + one file per service) and `configs/prometheus.yml` for the bundled Prometheus container.
+- `migrations/` – SQL migrations; `0001_init.sql` seeds core tables plus service-specific subfolders.
+- `docker-compose.yml` – local stack: Postgres, NATS, Redis (currently unused by code), Prometheus, and all Go services launched with `go run`.
+- `Makefile` – convenience targets to run each service with local Go.
+- `go.work` / `go.work.sum` – Go 1.22 workspace tying the modules together.
+- `docs/` – operational notes (cache ideas, data-service hints).
 
-## Requirements
-- Go 1.21+
-- Docker
-- Make
-- (Optional) `golangci-lint`, `goose` for migrations
+## Services
+- `evm-indexer` (port 9001) – polls RPC stubs for new heads/backfill, stores blocks/tx/logs, exposes `/api/v1/internal/tip`, health, ready, metrics.
+- `dag-indexer` (port 9002) – subscribes to DAG block events, tracks DAG tips, exposes `/api/v1/dag/tip`, health, ready, metrics.
+- `api-gateway` (port 8080) – HTTP facade for blocks/tx/logs/dag/stats/search/contracts/traces; handlers rely on stub clients backed by Postgres connections.
+- `stats-service` (port 9003) – periodic aggregation over `stats_daily`, endpoints for overview and historical stats.
+- `trace-service` (port 9004) – queues and processes `debug_traceTransaction` calls, serves traces/state-diffs.
+- `search-service` (port 9005) – subscribes to NATS events (placeholder) and serves `/api/v1/search`.
+- `contract-service` (port 9006) – stores contract metadata and a stubbed `/verify` compiler hook.
+- `ws-service` (port 8090) – WebSocket fanout at `/ws`; forwards NATS `evm.block.canonical` messages if present.
 
-## Setup
+Most RPC calls and client responses are scaffolding/stubs; wire them to real chain nodes, event producers, and queries before production use.
+
+## Configuration
+- Common settings live in `configs/common.yaml` (service name, ports, Postgres, Redis placeholder, NATS subject prefix).
+- Each service has its own config file in `configs/*.yaml` (e.g., `evm-indexer.yaml`, `dag-indexer.yaml`, `trace-service.yaml`).
+- Config is loaded from `CONFIG_PATH` (default `./configs/common.yaml`) plus a service-specific env var:
+  - `EVM_INDEXER_CONFIG`, `DAG_INDEXER_CONFIG`, `API_GATEWAY_CONFIG`, `STATS_SERVICE_CONFIG`, `TRACE_SERVICE_CONFIG`, `SEARCH_SERVICE_CONFIG`, `CONTRACT_SERVICE_CONFIG`, `WS_SERVICE_CONFIG`.
+- Environment overrides use the service prefix (e.g., `EVM_INDEXER_HTTPPORT=9001`); see `.env.example` for all defaults.
+
+## Running locally with Docker Compose
+1) Copy and adjust envs: `cp .env.example .env` (Compose already points to `.env.example` if you want to edit in place).  
+2) Start the stack:  
 ```bash
-go mod tidy          # download deps
-gofmt -w .           # format
+docker-compose up -d
 ```
+   - Postgres on `localhost:5432`, NATS on `4222/8222`, Redis on `6379` (currently unused), Prometheus on `9090`.
+   - App containers listen on the compose network only; add `ports:` if you need host access.
 
-## Makefile targets
-- `make build` – build all binaries under `cmd/...` (linux/amd64).
-- `make test` – `go test ./... -race -cover`.
-- `make lint` – runs `golangci-lint`.
-- `make docker-build` – builds local images for indexer/api/ws using Dockerfiles.
-- `make run-local` – runs API in dev mode (env-driven config).
-- `make migrate` – applies migrations with goose (`POSTGRES_URL` must be set).
-
-## Docker images
-Example builds (without Make):
-```bash
-docker build -f deploy/docker/Dockerfile.indexer -t block-indexer-indexer:local .
-docker build -f deploy/docker/Dockerfile.api     -t block-indexer-api:local .
-docker build -f deploy/docker/Dockerfile.ws      -t block-indexer-ws:local .
-```
-
-## Kubernetes
-- Apply config/secret (edit placeholders), then Deployments/Services:
-```bash
-kubectl apply -f deploy/k8s/configmap.yaml
-kubectl apply -f deploy/k8s/secret-example.yaml   # replace with real secret management
-kubectl apply -f deploy/k8s/indexer.yaml
-kubectl apply -f deploy/k8s/api.yaml
-kubectl apply -f deploy/k8s/ws.yaml
-```
-- Helm skeleton is under `deploy/helm/` (fill values, add secrets).
-
-## Observability
-- `/metrics` on each service via Prometheus client; key metrics defined in `internal/metrics`.
-- OTEL tracer stub in `internal/telemetry` (wire collector endpoint in config/env).
-- Grafana dashboard stub in `deploy/observability/grafana-dashboard.json`.
+## Running services with the local Go toolchain
+Requirements: Go 1.22+, Postgres + NATS reachable per `configs/common.yaml`.
+- `make run-evm-indexer` (or any `run-*` target) starts a single service with `CONFIG_PATH` and the matching `*_CONFIG` set.
+- `make build` builds all service binaries under `services/...`.
+See `docs/evm-indexer-local.md` for a no-Docker loop when you want to iterate quickly on the EVM indexer only.
 
 ## Migrations
-Using `goose` (or swap for `golang-migrate`). Example:
+Migrations are not auto-run. Apply them with `goose` (or your preferred tool) against Postgres, e.g.:
 ```bash
-POSTGRES_URL=postgres://user:pass@localhost:5432/block_indexer?sslmode=disable \
-goose -dir ./migrations postgres "$POSTGRES_URL" up
+POSTGRES_URL=postgres://explorer:explorer_pass@localhost:5432/explorer_db?sslmode=disable
+goose -dir migrations/evm_indexer postgres "$POSTGRES_URL" up
+goose -dir migrations/contract_service postgres "$POSTGRES_URL" up
 ```
+Repeat for other folders (`dag_indexer`, `search_service`, `stats_service`, `trace_service`) as needed.
 
-## Next steps
-- Generate real gRPC code from `protos/explorer.proto` (buf or protoc) and replace `internal/pb`.
-- Implement chain RPC logic (go-ethereum) and full DB/cache wiring with reorg handling.
-- Harden configs (timeouts, retry/backoff), add integration tests, and tune partitions/indices.
+## Observability
+- Each service exposes `/health`, `/ready`, and `/metrics` on its HTTP port.
+- Prometheus in Compose uses `configs/prometheus.yml` to scrape every service.
+- NATS is used for fanout plumbing; publishing from indexers is not wired yet, so search/ws will idle until events are produced.

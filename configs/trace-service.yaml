@@ -1,0 +1,5 @@
+extends: common
+serviceName: trace-service
+httpPort: 9004
+trace:
+  concurrency: 2

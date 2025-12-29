@@ -1,0 +1,6 @@
+extends: common
+serviceName: dag-indexer
+httpPort: 9002
+rpc:
+  dagEndpoint: http://54.69.156.70:38131
+  wsEndpoint: ws://54.69.156.70:38131/ws

@@ -1,21 +1,160 @@
-version: '3'
+version: '3.9'
 
 services:
-  postgres:
-    image: postgres:16
-    container_name: explorer-postgres
-    environment:
-      POSTGRES_USER: explorer
-      POSTGRES_PASSWORD: explorer_pass
-      POSTGRES_DB: explorer_db
+  # postgres:
+  #   image: postgres:16
+  #   container_name: explorer-postgres
+  #   environment:
+  #     POSTGRES_USER: explorer
+  #     POSTGRES_PASSWORD: explorer_pass
+  #     POSTGRES_DB: explorer_db
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - /data/postgresql/indexer2/data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U explorer -d explorer_db"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 10
+
+  redis:
+    image: redis:7
+    container_name: explorer-redis
     ports:
-      - "5431:5432"
+      - "6379:6379"
+
+  nats:
+    image: nats:2
+    container_name: explorer-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  evm-indexer:
+    image: golang:1.22
+    working_dir: /app
+    command: sh -c "go run ./services/evm-indexer"
+    env_file:
+      - .env.example
+    environment:
+      CONFIG_PATH: /app/configs/common.yaml
+      EVM_INDEXER_CONFIG: /app/configs/evm-indexer.yaml
     volumes:
-      - /data/postgresql/indexer/data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U explorer -d explorer_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - ./:/app
+    depends_on:
+      # - postgres
+      - nats
+
+  # dag-indexer:
+  #   image: golang:1.22
+  #   working_dir: /app
+  #   command: sh -c "go run ./services/dag-indexer"
+  #   env_file:
+  #     - .env.example
+  #   environment:
+  #     CONFIG_PATH: /app/configs/common.yaml
+  #     DAG_INDEXER_CONFIG: /app/configs/dag-indexer.yaml
+  #   volumes:
+  #     - ./:/app
+  #   depends_on:
+  #     - postgres
+  #     - nats
+
+  # stats-service:
+  #   image: golang:1.22
+  #   working_dir: /app
+  #   command: sh -c "go run ./services/stats-service"
+  #   env_file:
+  #     - .env.example
+  #   environment:
+  #     CONFIG_PATH: /app/configs/common.yaml
+  #     STATS_SERVICE_CONFIG: /app/configs/stats-service.yaml
+  #   volumes:
+  #     - ./:/app
+  #   depends_on:
+  #     - postgres
+
+  # trace-service:
+  #   image: golang:1.22
+  #   working_dir: /app
+  #   command: sh -c "go run ./services/trace-service"
+  #   env_file:
+  #     - .env.example
+  #   environment:
+  #     CONFIG_PATH: /app/configs/common.yaml
+  #     TRACE_SERVICE_CONFIG: /app/configs/trace-service.yaml
+  #   volumes:
+  #     - ./:/app
+  #   depends_on:
+  #     - postgres
+
+  # search-service:
+  #   image: golang:1.22
+  #   working_dir: /app
+  #   command: sh -c "go run ./services/search-service"
+  #   env_file:
+  #     - .env.example
+  #   environment:
+  #     CONFIG_PATH: /app/configs/common.yaml
+  #     SEARCH_SERVICE_CONFIG: /app/configs/search-service.yaml
+  #   volumes:
+  #     - ./:/app
+  #   depends_on:
+  #     - postgres
+
+  # contract-service:
+  #   image: golang:1.22
+  #   working_dir: /app
+  #   command: sh -c "go run ./services/contract-service"
+  #   env_file:
+  #     - .env.example
+  #   environment:
+  #     CONFIG_PATH: /app/configs/common.yaml
+  #     CONTRACT_SERVICE_CONFIG: /app/configs/contract-service.yaml
+  #   volumes:
+  #     - ./:/app
+  #   depends_on:
+  #     - postgres
+
+  # api-gateway:
+  #   image: golang:1.22
+  #   working_dir: /app
+  #   command: sh -c "go run ./services/api-gateway"
+  #   env_file:
+  #     - .env.example
+  #   environment:
+  #     CONFIG_PATH: /app/configs/common.yaml
+  #     API_GATEWAY_CONFIG: /app/configs/api-gateway.yaml
+  #   volumes:
+  #     - ./:/app
+  #   depends_on:
+  #     - postgres
+  #     - evm-indexer
+  #     - dag-indexer
+
+  # ws-service:
+  #   image: golang:1.22
+  #   working_dir: /app
+  #   command: sh -c "go run ./services/ws-service"
+  #   env_file:
+  #     - .env.example
+  #   environment:
+  #     CONFIG_PATH: /app/configs/common.yaml
+  #     WS_SERVICE_CONFIG: /app/configs/ws-service.yaml
+  #   volumes:
+  #     - ./:/app
+  #   depends_on:
+  #     - nats
+
+  # prometheus:
+  #   image: prom/prometheus:v2.51.0
+  #   command:
+  #     - --config.file=/etc/prometheus/prometheus.yml
+  #   volumes:
+  #     - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #   ports:
+  #     - "9090:9090"
 
 # volumes:
+  # postgres-data:

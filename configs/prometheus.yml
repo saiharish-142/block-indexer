@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+  - job_name: api-gateway
+    static_configs:
+      - targets: ['api-gateway:8080']
+  - job_name: evm-indexer
+    static_configs:
+      - targets: ['evm-indexer:9001']
+  - job_name: dag-indexer
+    static_configs:
+      - targets: ['dag-indexer:9002']
+  - job_name: stats-service
+    static_configs:
+      - targets: ['stats-service:9003']
+  - job_name: trace-service
+    static_configs:
+      - targets: ['trace-service:9004']
+  - job_name: search-service
+    static_configs:
+      - targets: ['search-service:9005']
+  - job_name: contract-service
+    static_configs:
+      - targets: ['contract-service:9006']
+  - job_name: ws-service
+    static_configs:
+      - targets: ['ws-service:8090']

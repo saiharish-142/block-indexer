@@ -1,0 +1,10 @@
+extends: common
+serviceName: evm-indexer
+httpPort: 9001
+logLevel: debug
+rpc:
+  evmEndpoint: http://54.232.220.28:18545
+  wsEndpoint: ws://54.232.220.28:18546
+backfill:
+  enabled: true
+  intervalSeconds: 30
